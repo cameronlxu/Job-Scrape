@@ -3,11 +3,12 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
-# Customizable Inputs
-job = 'Software Engineer Intern'
-location = '94555'
 
 def main():
+    # Customizable Inputs
+    job = 'Software Engineer Intern'
+    location = '94555'
+
     # Setup
     url = 'https://www.indeed.com/jobs?q={}&l={}'.format(job.replace(' ','+'), location)
     page = requests.get(url)
@@ -18,7 +19,7 @@ def main():
     DRIVER_BIN = os.path.join(PROJECT_ROOT, "chromedriver")
     chrome_options = Options()
     chrome_options.add_argument("--headless")   # Browser stays closed
-    browser = webdriver.Chrome(executable_path = DRIVER_BIN, options=chrome_options)
+    browser = webdriver.Chrome(executable_path = DRIVER_BIN, options = chrome_options)
 
     # Start parsing the home page
     parseHome(browser, soup)
@@ -32,7 +33,8 @@ def parseHome(browser, soup):
     data = []
 
     for job_elem in job_elems:
-        title = job_elem.find('h2', class_='title')
+        # Retrieve general job information
+        title = job_elem.find('h2', class_='title').find_all('a')   # Only look at 'a'. Some jobs show as a "new" listing, filter out "new" text
         company = job_elem.find('span', class_='company')
         location = job_elem.find('span', class_='location accessible-contrast-color-location')   
         if None in (title, company, location):
@@ -49,7 +51,7 @@ def parseHome(browser, soup):
         job_path = detail_soup.find(id='viewJobButtonLinkContainer')
 
         # Format each index's data
-        to_add = [company.text.strip(), title.text.strip(), location.text.strip()]
+        to_add = [company.text.strip(), title[0].text.strip(), location.text.strip()]
 
         # Some jobs can be applied directly on indeed, determine this then save link
         if job_path is None:
@@ -60,8 +62,22 @@ def parseHome(browser, soup):
 
         # Add to full data list
         data.append(to_add)
-        print(to_add)
 
+    # Write data to CSV File
+    write(data)
+
+
+def write(data):
+    fields = ['Company', "Title", "Location", "Link"]
+    filename = "job-scrape-output.csv"
+    
+    # Creates new CSV file in same directory, iterate through data list
+    with open(filename, 'w') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        csvwriter.writerow(fields)
+        for job in data:
+            csvwriter.writerow(job)
+    
 
 if __name__ == "__main__":
     main()
